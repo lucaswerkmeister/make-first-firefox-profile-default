@@ -1,0 +1,11 @@
+[package]
+name = "make-first-firefox-profile-default"
+version = "0.1.0"
+authors = ["Lucas Werkmeister <mail@lucaswerkmeister.de>"]
+edition = "2021"
+repository = "https://github.com/lucaswerkmeister/make-first-firefox-profile-default/"
+license = "BlueOak-1.0.0"
+
+[dependencies]
+anyhow = "1.0.91"
+dirs = "5.0.1"
