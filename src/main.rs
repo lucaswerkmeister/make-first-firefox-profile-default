@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use dirs;
 use std::fs::{rename, File, OpenOptions};
 use std::io::{stdout, BufRead, BufReader, BufWriter, Write};
