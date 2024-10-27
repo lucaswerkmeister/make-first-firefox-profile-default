@@ -79,4 +79,74 @@ Default=1
         read_update_write(BufReader::new(input.as_bytes()), &mut output).unwrap();
         assert_eq!(input, String::from_utf8(output).unwrap());
     }
+
+    #[test]
+    fn two_profiles_first_default() {
+        let input = r#"[Install0123456789ABCDEF]
+Default=abcdefgh.default
+Locked=1
+
+[Profile0]
+Name=default
+Path=abcdefgh.default
+# we shift this line below the blank line, which is irritating but harmless
+Default=1
+
+[Profile1]
+Name=other
+Path=zyxwvuts.other
+"#;
+        let mut output = Vec::new();
+        read_update_write(BufReader::new(input.as_bytes()), &mut output).unwrap();
+        let expected = r#"[Install0123456789ABCDEF]
+Default=abcdefgh.default
+Locked=1
+
+[Profile0]
+Name=default
+Path=abcdefgh.default
+# we shift this line below the blank line, which is irritating but harmless
+
+Default=1
+[Profile1]
+Name=other
+Path=zyxwvuts.other
+"#;
+        assert_eq!(expected, String::from_utf8(output).unwrap());
+    }
+
+    #[test]
+    fn two_profiles_second_default() {
+        let input = r#"[Install0123456789ABCDEF]
+# the fact that we don’t touch this line is actually a bug
+Default=zyxwvuts.other
+Locked=1
+
+[Profile0]
+Name=default
+Path=abcdefgh.default
+
+[Profile1]
+Name=other
+Path=zyxwvuts.other
+Default=1
+"#;
+        let mut output = Vec::new();
+        read_update_write(BufReader::new(input.as_bytes()), &mut output).unwrap();
+        let expected = r#"[Install0123456789ABCDEF]
+# the fact that we don’t touch this line is actually a bug
+Default=zyxwvuts.other
+Locked=1
+
+[Profile0]
+Name=default
+Path=abcdefgh.default
+
+Default=1
+[Profile1]
+Name=other
+Path=zyxwvuts.other
+"#;
+        assert_eq!(expected, String::from_utf8(output).unwrap());
+    }
 }
