@@ -12,7 +12,7 @@ fn profiles_ini_path() -> Result<PathBuf> {
     Ok(path)
 }
 
-fn first_profile_path(profiles_ini: &str) -> &str {
+fn first_profile_path(profiles_ini: &str) -> Result<&str> {
     let mut lowest_profile: Option<(u64, Option<&str>)> = None;
     let mut in_lowest_profile = false;
     for line in profiles_ini.lines() {
@@ -20,7 +20,9 @@ fn first_profile_path(profiles_ini: &str) -> &str {
             in_lowest_profile = false;
             if line.starts_with("[Profile") && line.ends_with("]") {
                 let current_num = &line["[Profile".len()..(line.len() - "]".len())];
-                let current_num: u64 = current_num.parse().unwrap();
+                let current_num: u64 = current_num
+                    .parse()
+                    .context("Unable to parse profile number")?;
                 if lowest_profile.is_none_or(|(lowest_num, _)| current_num < lowest_num) {
                     lowest_profile = Some((current_num, None));
                     in_lowest_profile = true;
@@ -32,7 +34,10 @@ fn first_profile_path(profiles_ini: &str) -> &str {
             }
         }
     }
-    lowest_profile.unwrap().1.unwrap()
+    lowest_profile
+        .ok_or_else(|| anyhow!("No profile section found"))?
+        .1
+        .ok_or_else(|| anyhow!("No path found in first profile section"))
 }
 
 fn read_update_write<W: Write>(input: &str, mut writer: W) -> Result<()> {
@@ -42,7 +47,7 @@ fn read_update_write<W: Write>(input: &str, mut writer: W) -> Result<()> {
             in_install_section = line.starts_with("[Install");
             writeln!(writer, "{}", line)?;
         } else if in_install_section && line.starts_with("Default=") {
-            writeln!(writer, "Default={}", first_profile_path(input))?;
+            writeln!(writer, "Default={}", first_profile_path(input)?)?;
         } else {
             writeln!(writer, "{}", line)?;
         }
