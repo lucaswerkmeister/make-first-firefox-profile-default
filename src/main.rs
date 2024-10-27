@@ -16,16 +16,16 @@ fn first_profile_path(profiles_ini: &str) -> &str {
     let mut lowest_profile: Option<(u64, Option<&str>)> = None;
     let mut in_lowest_profile = false;
     for line in profiles_ini.lines() {
-        if line.starts_with("[Profile") {
+        if line.starts_with("[") {
             in_lowest_profile = false;
-            let current_num = &line["[Profile".len()..(line.len() - "]".len())];
-            let current_num: u64 = current_num.parse().unwrap();
-            if lowest_profile.is_none_or(|(lowest_num, _)| current_num < lowest_num) {
-                lowest_profile = Some((current_num, None));
-                in_lowest_profile = true;
+            if line.starts_with("[Profile") {
+                let current_num = &line["[Profile".len()..(line.len() - "]".len())];
+                let current_num: u64 = current_num.parse().unwrap();
+                if lowest_profile.is_none_or(|(lowest_num, _)| current_num < lowest_num) {
+                    lowest_profile = Some((current_num, None));
+                    in_lowest_profile = true;
+                }
             }
-        } else if line.starts_with("[") {
-            in_lowest_profile = false;
         } else if line.starts_with("Path=") && in_lowest_profile {
             if let Some((_, path)) = &mut lowest_profile {
                 *path = Some(&line["Path=".len()..]);
