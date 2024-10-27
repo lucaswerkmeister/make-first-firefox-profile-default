@@ -12,39 +12,45 @@ fn profiles_ini_path() -> Result<PathBuf> {
     Ok(path)
 }
 
-#[derive(Eq, PartialEq)]
-enum SectionState {
-    BeforeFirstSection,
-    InProfileSection,
-    InOtherSection,
-}
-
-fn read_update_write<W: Write>(input: &str, mut writer: W) -> Result<()> {
-    let mut section_state = SectionState::BeforeFirstSection;
-    let mut saw_profile = false;
-    for line in input.lines() {
-        if line.starts_with("[") {
-            if section_state == SectionState::InProfileSection && !saw_profile {
-                writeln!(writer, "Default=1")?;
-                saw_profile = true;
+fn first_profile_path(profiles_ini: &str) -> &str {
+    let mut lowest_profile: Option<(u64, Option<&str>)> = None;
+    let mut in_lowest_profile = false;
+    for line in profiles_ini.lines() {
+        if line.starts_with("[Profile") {
+            in_lowest_profile = false;
+            let current_num = &line["[Profile".len()..(line.len() - "]".len())];
+            let current_num: u64 = current_num.parse().unwrap();
+            if let Some((lowest_num, _)) = lowest_profile {
+                if current_num < lowest_num {
+                    lowest_profile = Some((current_num, None));
+                    in_lowest_profile = true;
+                }
+            } else if lowest_profile.is_none() {
+                lowest_profile = Some((current_num, None));
+                in_lowest_profile = true;
             }
-            if line.starts_with("[Profile") {
-                section_state = SectionState::InProfileSection;
-            } else {
-                section_state = SectionState::InOtherSection;
-            }
-            writeln!(writer, "{}", line)?;
-        } else {
-            if section_state == SectionState::InProfileSection && line.eq("Default=1") {
-                // skip line
-            } else {
-                writeln!(writer, "{}", line)?;
+        } else if line.starts_with("[") {
+            in_lowest_profile = false;
+        } else if line.starts_with("Path=") && in_lowest_profile {
+            if let Some((_, path)) = &mut lowest_profile {
+                *path = Some(&line["Path=".len()..]);
             }
         }
     }
-    if section_state == SectionState::InProfileSection && !saw_profile {
-        writeln!(writer, "Default=1")?;
-        saw_profile = true;
+    lowest_profile.unwrap().1.unwrap()
+}
+
+fn read_update_write<W: Write>(input: &str, mut writer: W) -> Result<()> {
+    let mut in_install_section = false;
+    for line in input.lines() {
+        if line.starts_with("[") {
+            in_install_section = line.starts_with("[Install");
+            writeln!(writer, "{}", line)?;
+        } else if in_install_section && line.starts_with("Default=") {
+            writeln!(writer, "Default={}", first_profile_path(input))?;
+        } else {
+            writeln!(writer, "{}", line)?;
+        }
     }
     Ok(())
 }
@@ -91,7 +97,6 @@ Locked=1
 [Profile0]
 Name=default
 Path=abcdefgh.default
-# we shift this line below the blank line, which is irritating but harmless
 Default=1
 
 [Profile1]
@@ -107,9 +112,8 @@ Locked=1
 [Profile0]
 Name=default
 Path=abcdefgh.default
-# we shift this line below the blank line, which is irritating but harmless
-
 Default=1
+
 [Profile1]
 Name=other
 Path=zyxwvuts.other
@@ -120,7 +124,6 @@ Path=zyxwvuts.other
     #[test]
     fn two_profiles_second_default() {
         let input = r#"[Install0123456789ABCDEF]
-# the fact that we don’t touch this line is actually a bug
 Default=zyxwvuts.other
 Locked=1
 
@@ -131,23 +134,24 @@ Path=abcdefgh.default
 [Profile1]
 Name=other
 Path=zyxwvuts.other
+# we don’t touch this line – it appears to have no effect
 Default=1
 "#;
         let mut output = Vec::new();
         read_update_write(&input, &mut output).unwrap();
         let expected = r#"[Install0123456789ABCDEF]
-# the fact that we don’t touch this line is actually a bug
-Default=zyxwvuts.other
+Default=abcdefgh.default
 Locked=1
 
 [Profile0]
 Name=default
 Path=abcdefgh.default
 
-Default=1
 [Profile1]
 Name=other
 Path=zyxwvuts.other
+# we don’t touch this line – it appears to have no effect
+Default=1
 "#;
         assert_eq!(expected, String::from_utf8(output).unwrap());
     }
