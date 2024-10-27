@@ -18,7 +18,7 @@ fn first_profile_path(profiles_ini: &str) -> &str {
     for line in profiles_ini.lines() {
         if line.starts_with("[") {
             in_lowest_profile = false;
-            if line.starts_with("[Profile") {
+            if line.starts_with("[Profile") && line.ends_with("]") {
                 let current_num = &line["[Profile".len()..(line.len() - "]".len())];
                 let current_num: u64 = current_num.parse().unwrap();
                 if lowest_profile.is_none_or(|(lowest_num, _)| current_num < lowest_num) {
@@ -26,7 +26,7 @@ fn first_profile_path(profiles_ini: &str) -> &str {
                     in_lowest_profile = true;
                 }
             }
-        } else if line.starts_with("Path=") && in_lowest_profile {
+        } else if in_lowest_profile && line.starts_with("Path=") {
             if let Some((_, path)) = &mut lowest_profile {
                 *path = Some(&line["Path=".len()..]);
             }
