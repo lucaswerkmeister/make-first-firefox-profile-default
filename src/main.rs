@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use dirs;
 use std::fs::{rename, File, OpenOptions};
-use std::io::{stdout, BufRead, BufReader, BufWriter, Write};
+use std::io::{stdout, BufWriter, Read, Write};
 use std::path::PathBuf;
 
 fn profiles_ini_path() -> Result<PathBuf> {
@@ -19,11 +19,10 @@ enum SectionState {
     InOtherSection,
 }
 
-fn read_update_write<R: BufRead, W: Write>(reader: R, mut writer: W) -> Result<()> {
+fn read_update_write<W: Write>(input: &str, mut writer: W) -> Result<()> {
     let mut section_state = SectionState::BeforeFirstSection;
     let mut saw_profile = false;
-    for line in reader.lines() {
-        let line = line.context("Unable to read line from profiles.ini")?;
+    for line in input.lines() {
         if line.starts_with("[") {
             if section_state == SectionState::InProfileSection && !saw_profile {
                 writeln!(writer, "Default=1")?;
@@ -51,9 +50,12 @@ fn read_update_write<R: BufRead, W: Write>(reader: R, mut writer: W) -> Result<(
 }
 
 fn main() -> Result<()> {
-    let input_file = File::open(&profiles_ini_path()?)?;
-    let reader = BufReader::new(input_file);
-    read_update_write(reader, stdout())?;
+    let mut input_file = File::open(&profiles_ini_path()?)?;
+    let mut input = String::new();
+    input_file
+        .read_to_string(&mut input)
+        .context("Unable to read profiles.ini")?;
+    read_update_write(&input, stdout())?;
 
     Ok(())
 }
@@ -76,7 +78,7 @@ Path=abcdefgh.default
 Default=1
 "#;
         let mut output = Vec::new();
-        read_update_write(BufReader::new(input.as_bytes()), &mut output).unwrap();
+        read_update_write(&input, &mut output).unwrap();
         assert_eq!(input, String::from_utf8(output).unwrap());
     }
 
@@ -97,7 +99,7 @@ Name=other
 Path=zyxwvuts.other
 "#;
         let mut output = Vec::new();
-        read_update_write(BufReader::new(input.as_bytes()), &mut output).unwrap();
+        read_update_write(&input, &mut output).unwrap();
         let expected = r#"[Install0123456789ABCDEF]
 Default=abcdefgh.default
 Locked=1
@@ -132,7 +134,7 @@ Path=zyxwvuts.other
 Default=1
 "#;
         let mut output = Vec::new();
-        read_update_write(BufReader::new(input.as_bytes()), &mut output).unwrap();
+        read_update_write(&input, &mut output).unwrap();
         let expected = r#"[Install0123456789ABCDEF]
 # the fact that we don’t touch this line is actually a bug
 Default=zyxwvuts.other
