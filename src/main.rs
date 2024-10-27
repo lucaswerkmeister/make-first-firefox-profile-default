@@ -20,12 +20,7 @@ fn first_profile_path(profiles_ini: &str) -> &str {
             in_lowest_profile = false;
             let current_num = &line["[Profile".len()..(line.len() - "]".len())];
             let current_num: u64 = current_num.parse().unwrap();
-            if let Some((lowest_num, _)) = lowest_profile {
-                if current_num < lowest_num {
-                    lowest_profile = Some((current_num, None));
-                    in_lowest_profile = true;
-                }
-            } else if lowest_profile.is_none() {
+            if lowest_profile.is_none_or(|(lowest_num, _)| current_num < lowest_num) {
                 lowest_profile = Some((current_num, None));
                 in_lowest_profile = true;
             }
