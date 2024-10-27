@@ -9,3 +9,4 @@ license = "BlueOak-1.0.0"
 [dependencies]
 anyhow = "1.0.91"
 dirs = "5.0.1"
+pretty_assertions = "1.4.1"

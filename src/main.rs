@@ -43,6 +43,10 @@ fn read_update_write<R: BufRead, W: Write>(reader: R, mut writer: W) -> Result<(
             }
         }
     }
+    if section_state == SectionState::InProfileSection && !saw_profile {
+        writeln!(writer, "Default=1")?;
+        saw_profile = true;
+    }
     Ok(())
 }
 
@@ -52,4 +56,27 @@ fn main() -> Result<()> {
     read_update_write(reader, stdout())?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn one_profile() {
+        let input = r#"[Install0123456789ABCDEF]
+Default=abcdefgh.default
+Locked=1
+
+[Profile0]
+Name=default
+IsRelative=1
+Path=abcdefgh.default
+Default=1
+"#;
+        let mut output = Vec::new();
+        read_update_write(BufReader::new(input.as_bytes()), &mut output).unwrap();
+        assert_eq!(input, String::from_utf8(output).unwrap());
+    }
 }
