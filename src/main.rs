@@ -43,7 +43,7 @@ fn first_profile_path(profiles_ini: &str) -> Result<&str> {
         .ok_or_else(|| anyhow!("No path found in first profile section"))
 }
 
-fn read_update_write<W: Write>(input: &str, mut writer: W) -> Result<()> {
+fn write_profiles_ini<W: Write>(input: &str, mut writer: W) -> Result<()> {
     let mut in_install_section = false;
     for line in input.lines() {
         if line.starts_with("[") {
@@ -71,7 +71,7 @@ fn main() -> Result<()> {
         .create(true)
         .open(&tmp_path)
         .context("Unable to create temporary output file")?;
-    read_update_write(&input, BufWriter::new(output_file))?;
+    write_profiles_ini(&input, BufWriter::new(output_file))?;
     rename(tmp_path, file_path)
         .context("Unable to turn temporary output file into real profiles.ini")?;
 
@@ -96,7 +96,7 @@ Path=abcdefgh.default
 Default=1
 "#;
         let mut output = Vec::new();
-        read_update_write(&input, &mut output).unwrap();
+        write_profiles_ini(&input, &mut output).unwrap();
         assert_eq!(input, String::from_utf8(output).unwrap());
     }
 
@@ -116,7 +116,7 @@ Name=other
 Path=zyxwvuts.other
 "#;
         let mut output = Vec::new();
-        read_update_write(&input, &mut output).unwrap();
+        write_profiles_ini(&input, &mut output).unwrap();
         let expected = r#"[Install0123456789ABCDEF]
 Default=abcdefgh.default
 Locked=1
@@ -150,7 +150,7 @@ Path=zyxwvuts.other
 Default=1
 "#;
         let mut output = Vec::new();
-        read_update_write(&input, &mut output).unwrap();
+        write_profiles_ini(&input, &mut output).unwrap();
         let expected = r#"[Install0123456789ABCDEF]
 Default=abcdefgh.default
 Locked=1
