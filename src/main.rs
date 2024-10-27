@@ -1,15 +1,18 @@
 use anyhow::{anyhow, Context, Result};
+use chrono::Local;
 use dirs;
 use std::fs::{rename, File, OpenOptions};
-use std::io::{stdout, BufWriter, Read, Write};
+use std::io::{BufWriter, Read, Write};
 use std::path::PathBuf;
 
-fn profiles_ini_path() -> Result<PathBuf> {
-    let mut path = dirs::home_dir().ok_or_else(|| anyhow!("Unable to determine home directory"))?;
-    path.push(".mozilla");
-    path.push("firefox");
-    path.push("profiles.ini");
-    Ok(path)
+fn profiles_ini_path() -> Result<(PathBuf, PathBuf)> {
+    let mut dir_path =
+        dirs::home_dir().ok_or_else(|| anyhow!("Unable to determine home directory"))?;
+    dir_path.push(".mozilla");
+    dir_path.push("firefox");
+    let mut file_path = dir_path.clone();
+    file_path.push("profiles.ini");
+    Ok((dir_path, file_path))
 }
 
 fn first_profile_path(profiles_ini: &str) -> Result<&str> {
@@ -56,12 +59,21 @@ fn read_update_write<W: Write>(input: &str, mut writer: W) -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    let mut input_file = File::open(&profiles_ini_path()?)?;
+    let (dir_path, file_path) = profiles_ini_path()?;
+    let mut input_file = File::open(&file_path)?;
     let mut input = String::new();
     input_file
         .read_to_string(&mut input)
         .context("Unable to read profiles.ini")?;
-    read_update_write(&input, stdout())?;
+    let tmp_path = dir_path.join(Local::now().format("profiles.ini-%+").to_string());
+    let output_file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&tmp_path)
+        .context("Unable to create temporary output file")?;
+    read_update_write(&input, BufWriter::new(output_file))?;
+    rename(tmp_path, file_path)
+        .context("Unable to turn temporary output file into real profiles.ini")?;
 
     Ok(())
 }
