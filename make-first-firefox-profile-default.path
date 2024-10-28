@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch the Firefox profiles.ini file to make the first profile the default one whenever it is changed
+
+[Path]
+PathChanged=%h/.mozilla/firefox/profiles.ini
+
+[Install]
+WantedBy=paths.target

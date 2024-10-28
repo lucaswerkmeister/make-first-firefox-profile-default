@@ -1,0 +1,6 @@
+[Unit]
+Description=Make the first Firefox profile the default one
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/lib/make-first-firefox-profile-default
