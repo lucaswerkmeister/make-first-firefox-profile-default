@@ -58,4 +58,4 @@ systemctl --user daemon-reload
 [systemd]: https://systemd.io/
 [git-install]: https://git-scm.com/downloads/linux
 [make-install]: https://www.gnu.org/software/make/
-[rust-instal]: https://www.rust-lang.org/tools/install
+[rust-install]: https://www.rust-lang.org/tools/install
