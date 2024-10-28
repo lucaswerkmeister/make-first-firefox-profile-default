@@ -1,13 +1,12 @@
 use anyhow::{anyhow, Context, Result};
 use chrono::Local;
-use dirs;
+use dirs::home_dir;
 use std::fs::{rename, File, OpenOptions};
 use std::io::{BufWriter, Read, Write};
 use std::path::PathBuf;
 
 fn profiles_ini_path() -> Result<(PathBuf, PathBuf)> {
-    let mut dir_path =
-        dirs::home_dir().ok_or_else(|| anyhow!("Unable to determine home directory"))?;
+    let mut dir_path = home_dir().ok_or_else(|| anyhow!("Unable to determine home directory"))?;
     dir_path.push(".mozilla");
     dir_path.push("firefox");
     let mut file_path = dir_path.clone();
@@ -69,6 +68,7 @@ fn main() -> Result<()> {
     let output_file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(&tmp_path)
         .context("Unable to create temporary output file")?;
     write_profiles_ini(&input, BufWriter::new(output_file))?;
